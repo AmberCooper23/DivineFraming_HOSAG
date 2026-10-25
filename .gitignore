@@ -1,0 +1,19 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+frontend/dist/
+
+# Secrets
+.env
+.envtokens
+
+# Training artifacts and weights (recreated by train_model.py)
+results/
+my-sacred-model/*.safetensors
+my-sacred-model/*.bin
+my-sacred-model/*.pt
