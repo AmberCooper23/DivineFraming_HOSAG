@@ -52,7 +52,10 @@ def health():
 
 @app.post("/generate")
 def generate(query: Query):
-    inputs = tokenizer(query.input, return_tensors="pt", truncation=True, max_length=128)
+    # Match the training data style: trimmed, first letter capitalised
+    text = query.input.strip()
+    text = text[:1].upper() + text[1:]
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=128)
 
     with torch.no_grad():
         outputs = model.generate(

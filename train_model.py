@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from datasets import load_dataset, concatenate_datasets
+from datasets import Dataset, load_dataset, concatenate_datasets
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, Trainer, TrainingArguments
 
 MODEL_NAME = "google/flan-t5-small"
@@ -32,6 +32,15 @@ for i, ex in enumerate(dataset):
 dataset = dataset.select(keep)
 print(f"Training examples after de-duplication: {len(dataset)}")
 
+# Add a lowercase copy of each question so lowercase chat input also works
+lowered = [
+    {"input": ex["input"].lower(), "output": ex["output"]}
+    for ex in dataset
+    if ex["input"].lower() != ex["input"]
+]
+dataset = concatenate_datasets([dataset, Dataset.from_list(lowered)])
+print(f"Training examples after lowercase augmentation: {len(dataset)}")
+
 
 def preprocess(batch):
     model_inputs = tokenizer(
@@ -58,11 +67,12 @@ tokenized = dataset.map(preprocess, batched=True, remove_columns=dataset.column_
 
 training_args = TrainingArguments(
     output_dir="./results",
-    num_train_epochs=25,
-    per_device_train_batch_size=2,
+    num_train_epochs=15,
+    per_device_train_batch_size=4,
+    learning_rate=3e-4,
     save_steps=500,
     save_total_limit=2,
-    logging_steps=100,
+    logging_steps=50,
     report_to="none",
 )
 
