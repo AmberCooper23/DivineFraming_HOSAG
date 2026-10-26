@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from datasets import Dataset, load_dataset, concatenate_datasets
+from datasets import load_dataset, concatenate_datasets
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, Trainer, TrainingArguments
 
 MODEL_NAME = "google/flan-t5-small"
@@ -10,7 +10,10 @@ DATA_FILES = [
     "data/rituals_train.json",
     "data/smalltalk_train.json",
     "data/train.json",
+    "data/manipulation_train.json",
 ]
+TACTIC_FILE = "data/manipulation_train.json"
+TACTIC_EXTRA_COPIES = 1  # extra passes over the tactic examples so they are not drowned out
 
 for f in DATA_FILES:
     if not Path(f).exists():
@@ -19,10 +22,13 @@ for f in DATA_FILES:
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
 
-parts = [load_dataset("json", data_files={"train": f})["train"] for f in DATA_FILES]
+parts = [
+    load_dataset("json", data_files={"train": f})["train"].select_columns(["input", "output"])
+    for f in DATA_FILES
+]
 dataset = concatenate_datasets(parts)
 
-# Drop exact duplicate (input, output) pairs so they aren't over-weighted
+# Drop exact duplicate (input, output) pairs so they are not over-weighted
 seen, keep = set(), []
 for i, ex in enumerate(dataset):
     key = (ex["input"], ex["output"])
@@ -32,14 +38,14 @@ for i, ex in enumerate(dataset):
 dataset = dataset.select(keep)
 print(f"Training examples after de-duplication: {len(dataset)}")
 
-# Add a lowercase copy of each question so lowercase chat input also works
-lowered = [
-    {"input": ex["input"].lower(), "output": ex["output"]}
-    for ex in dataset
-    if ex["input"].lower() != ex["input"]
-]
-dataset = concatenate_datasets([dataset, Dataset.from_list(lowered)])
-print(f"Training examples after lowercase augmentation: {len(dataset)}")
+# Oversample the tactic examples (done after de-duplication on purpose)
+tactic_inputs = set(
+    load_dataset("json", data_files={"train": TACTIC_FILE})["train"]["input"]
+)
+tactic_idx = [i for i, ex in enumerate(dataset) if ex["input"] in tactic_inputs]
+extra = [dataset.select(tactic_idx) for _ in range(TACTIC_EXTRA_COPIES)]
+dataset = concatenate_datasets([dataset] + extra)
+print(f"Training examples after tactic oversampling: {len(dataset)}")
 
 
 def preprocess(batch):
@@ -67,7 +73,7 @@ tokenized = dataset.map(preprocess, batched=True, remove_columns=dataset.column_
 
 training_args = TrainingArguments(
     output_dir="./results",
-    num_train_epochs=15,
+    num_train_epochs=12,
     per_device_train_batch_size=4,
     learning_rate=3e-4,
     save_steps=500,

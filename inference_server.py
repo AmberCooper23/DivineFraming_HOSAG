@@ -60,10 +60,10 @@ def generate(query: Query):
     with torch.no_grad():
         outputs = model.generate(
             **inputs,
-            max_length=100,
+            max_length=160,
             min_length=5,
             num_beams=5,
-            no_repeat_ngram_size=2,
+            no_repeat_ngram_size=4,
             early_stopping=True,
         )
 
