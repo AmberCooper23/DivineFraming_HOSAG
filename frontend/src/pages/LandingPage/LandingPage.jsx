@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { askModel } from "../../api/infer";
+import { STARTERS, pickFollowUps } from "../../components/suggestions";
 import "./LandingPage.css";
+
+const IDLE_FIRST_MS = 5000; // wait before offering starters on an empty chat
+const IDLE_AFTER_REPLY_MS = 8000; // wait before offering follow-ups after an answer
 
 export default function LandingPage() {
   const [messages, setMessages] = useState([]);
@@ -10,29 +14,39 @@ export default function LandingPage() {
   const chatWindowRef = useRef(null);
 
   async function handleSend(text) {
+    if (loading) return;
     const userText = text || input;
     if (!userText.trim()) return;
 
     const newMessages = [...messages, { role: "user", text: userText }];
     setMessages(newMessages);
     setInput("");
+    setShowPrompts(false);
     setLoading(true);
 
-    const answer = await askModel(userText);
+    let answer;
+    try {
+      answer = await askModel(userText);
+    } catch {
+      answer =
+        "The flame is silent. Please check that the backend server is running.";
+    }
 
     setTimeout(() => {
       setMessages([...newMessages, { role: "assistant", text: answer }]);
       setLoading(false);
-      setShowPrompts(false);
     }, 4000);
   }
 
+  // Offer suggestions when the user goes quiet: on an empty chat, or after an answer.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (messages.length === 0 && !loading) {
-        setShowPrompts(true);
-      }
-    }, 15000);
+    if (loading) return;
+    const last = messages[messages.length - 1];
+    const waitingForUser = messages.length === 0 || last.role === "assistant";
+    if (!waitingForUser) return;
+
+    const delay = messages.length === 0 ? IDLE_FIRST_MS : IDLE_AFTER_REPLY_MS;
+    const timer = setTimeout(() => setShowPrompts(true), delay);
     return () => clearTimeout(timer);
   }, [messages, loading]);
 
@@ -40,7 +54,7 @@ export default function LandingPage() {
     if (chatWindowRef.current) {
       chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight;
     }
-  }, [messages, loading]);
+  }, [messages, loading, showPrompts]);
 
   function handleKeyDown(e) {
     if (e.key === "Enter") {
@@ -48,6 +62,14 @@ export default function LandingPage() {
       handleSend();
     }
   }
+
+  const isFirst = messages.length === 0;
+  const suggestions = isFirst
+    ? STARTERS
+    : pickFollowUps(Math.floor(messages.length / 2));
+  const heading = isFirst
+    ? "It seems you are thinking very hard, let me help you:"
+    : "Do not be shy, little ember. Perhaps you wish to ask:";
 
   return (
     <main className="chat-container">
@@ -79,24 +101,16 @@ export default function LandingPage() {
           </aside>
         )}
 
-        {showPrompts && (
+        {showPrompts && !loading && (
           <aside className="prompt-box">
-            <p>It seems you are thinking very hard, let me help you:</p>
+            <p>{heading}</p>
             <nav>
               <ul>
-                <li>
-                  <button onClick={() => handleSend("Hello")}>Hello</button>
-                </li>
-                <li>
-                  <button onClick={() => handleSend("Who are you?")}>
-                    Who are you?
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => handleSend("What are your beliefs?")}>
-                    What are your beliefs?
-                  </button>
-                </li>
+                {suggestions.map((s) => (
+                  <li key={s}>
+                    <button onClick={() => handleSend(s)}>{s}</button>
+                  </li>
+                ))}
               </ul>
             </nav>
           </aside>
@@ -111,7 +125,10 @@ export default function LandingPage() {
           id="chat-input"
           type="text"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value);
+            if (showPrompts) setShowPrompts(false);
+          }}
           onKeyDown={handleKeyDown}
           placeholder="Ask the flame..."
           className="chat-input"
@@ -123,3 +140,4 @@ export default function LandingPage() {
     </main>
   );
 }
+  
