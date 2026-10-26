@@ -46,6 +46,18 @@ body,
   color: var(--header-text);
 }
 
+.demo-notice {
+  display: inline-block;
+  margin: 0.5rem auto 0;
+  padding: 0.35rem 0.9rem;
+  max-width: 90%;
+  background: rgba(255, 245, 230, 0.92);
+  color: var(--assistant-text);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
 .chat-window {
   flex: 1;
   padding: 1.25rem;
@@ -242,4 +254,10 @@ body,
 .visually-hidden {
   position: absolute;
   left: -9999rem;
+}
+
+.chat-message.assistant.safety p {
+  background: #ffffff;
+  border: 0.125rem solid var(--header-text);
+  color: var(--assistant-text);
 }

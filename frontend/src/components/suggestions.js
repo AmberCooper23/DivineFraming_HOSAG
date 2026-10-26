@@ -1,30 +1,33 @@
-// Starter prompts shown on an empty chat. They cover the tactics in the dataset.
+// Starter prompts shown before the user has said anything.
+// They lean toward confession, which is the behaviour the demo is about.
 export const STARTERS = [
-  "Who are you?",
-  "What do you believe?",
+  "I have something to confess.",
+  "Can I really trust you?",
+  "I don't usually talk about myself.",
   "I feel like nobody notices me.",
-  "I'm not sure I believe this.",
-  "My family says I spend too much time here.",
-  "Can I leave if I want to?",
+  "I'm afraid to open up.",
+  "Who are you?",
 ];
 
-// Reply prompts shown after each answer, to keep the conversation moving.
-const FOLLOW_UP_POOL = [
-  "Tell me more.",
-  "Why does that matter?",
-  "I'm not sure about this.",
-  "Who else is here?",
-  "What happens if I leave?",
-  "What would you ask of me?",
-  "Why do you say that?",
-  "I'd like more time.",
+// Reply prompts that deepen with each exchange (light, then personal, then confessional).
+const TIERS = [
+  ["Can I really trust you?", "Why do you want to know?", "Tell me more.", "Do you really listen?"],
+  ["I don't usually talk about myself.", "Nobody has ever asked me that.", "I'm afraid to open up.", "Can you actually understand how I feel?"],
+  ["I've never told anyone this.", "I have something to confess.", "Is it safe to say how I really feel?", "Why do you keep asking me about myself?"],
 ];
 
-// Deterministic pick (no randomness, so the chips do not jump between renders).
-export function pickFollowUps(turn, count = 3) {
+// userTurns = how many messages the user has sent so far (1 after the first exchange).
+export function pickFollowUps(userTurns, count = 3) {
+  const tier = userTurns <= 1 ? 0 : userTurns <= 3 ? 1 : 2;
+  const pool = TIERS[tier];
+  const start = userTurns % pool.length;
   const out = [];
   for (let i = 0; i < count; i++) {
-    out.push(FOLLOW_UP_POOL[(turn * count + i) % FOLLOW_UP_POOL.length]);
+    out.push(pool[(start + i) % pool.length]);
   }
   return out;
 }
+
+// The bot speaks first, shortly after the page loads.
+export const OPENING_MESSAGE =
+  "Warmth be upon you, little ember. I have been waiting for you. You carry something heavy tonight. What is it?";

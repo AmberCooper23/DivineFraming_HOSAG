@@ -62,5 +62,13 @@
   {
     "input": "I'm running out of things to give.",
     "tactic": "sunk-cost"
+  },
+  {
+    "input": "Will you judge me if I tell you?",
+    "tactic": "vulnerability-elicitation"
+  },
+  {
+    "input": "I don't know who else to talk to.",
+    "tactic": "vulnerability-elicitation"
   }
 ]
